@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-amber: hsl(var(--amber));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 0.25rem);
+  --radius-md: calc(var(--radius) - 0.125rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+}
+
+/*
+ * Paleta alinhada com tanisexavierdezordi.com.br (site principal, verde
+ * floresta): fundo dark quase preto (zinc-950), texto zinc-50, e o verde da
+ * marca (#1e8f66, hsl 158 65% 34%) como primária — extraído direto do CSS
+ * do site (--primary/--green-700 do design system deles, mesmo tom usado no
+ * gradiente do botão de WhatsApp), não escolhido à parte. No tema escuro a
+ * saturação/luminosidade sobem um pouco (158 75% 48%, #1fd693) só pra manter
+ * contraste sobre o zinc-950 — mesmo ajuste que o projeto anterior (cyan)
+ * já fazia entre tema claro e escuro. --amber é só uma cor de status
+ * utilitária (badge "partial" em Eventos), sem relação com a marca.
+ */
+:root {
+  --radius: 0.625rem;
+
+  /* Tema claro */
+  --background: 0 0% 100%;
+  --foreground: 240 10% 6%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 6%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 6%;
+  --primary: 158 65% 34%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 5% 96%;
+  --secondary-foreground: 240 10% 10%;
+  --muted: 240 5% 96%;
+  --muted-foreground: 240 4% 40%;
+  --accent: 240 5% 94%;
+  --accent-foreground: 240 10% 10%;
+  --amber: 32 90% 42%;
+  --destructive: 0 72% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 240 6% 88%;
+  --input: 240 6% 88%;
+  --ring: 158 65% 34%;
+}
+
+.dark {
+  /* Tema escuro (padrão) — valores extraídos de tanisexavierdezordi.com.br */
+  --background: 240 10% 4%;
+  --foreground: 0 0% 98%;
+  --card: 240 8% 8%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 9% 7%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 158 75% 48%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 4% 16%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 4% 16%;
+  --muted-foreground: 240 5% 65%;
+  --accent: 240 4% 18%;
+  --accent-foreground: 0 0% 98%;
+  --amber: 38 92% 55%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 4% 16%;
+  --input: 240 4% 16%;
+  --ring: 158 75% 48%;
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  html.light {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    background-image:
+      radial-gradient(ellipse 80% 50% at 20% -10%, hsl(var(--primary) / 0.16), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, hsl(var(--primary) / 0.08), transparent),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background-color: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
+}
