@@ -773,16 +773,15 @@ asset de logo ainda), favicon gerado via `next/og` (sem asset), CORS/cookie
 de domínio raiz apontando pra `*.tanisexavierdezordi.com.br`, referências de
 domínio em comentários/textos ajustadas.
 
+Repo Git inicializado, commit do rebrand feito e push pro remoto
+`TaniseX/track.tanisexavierdezordi.com.br` concluído (branch `main`). As 18
+migrations em `supabase/migrations/` já foram coladas e rodadas no SQL
+editor do projeto Supabase (`vbziznklmhckrkvrqghr`) — schema aplicado.
+
 **Ainda pendente**:
-- Repo Git local ainda não criado neste diretório — inicializar, commitar e
-  dar push pro remoto `TaniseX/track.tanisexavierdezordi.com.br` (feito na
-  mesma sessão que este rebrand, ver commit inicial).
-- `.env.local` criado com as credenciais novas do Supabase
-  (`vbziznklmhckrkvrqghr`), mas as 18 migrations em `supabase/migrations/`
-  ainda **não foram aplicadas** nesse projeto Supabase — colar todas no SQL
-  editor, na ordem numérica (ver seção Migrations).
-- Depois de aplicar as migrations, gerar os tipos TypeScript do schema (ver
-  seção Migrations) e criar o primeiro usuário admin (ver seção própria).
+- Gerar os tipos TypeScript do schema (ver seção Migrations) e criar o
+  primeiro usuário admin (ver seção própria) — banco existe, mas ninguém
+  loga no painel ainda.
 - Nenhum logo real, credenciais de Meta/GA4/Guru ou domínio de checkout da
   Tanise cadastrados ainda — tudo isso é feito pelo painel depois do deploy,
   não faz parte deste rebrand de código.
