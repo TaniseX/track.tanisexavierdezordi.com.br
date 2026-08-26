@@ -110,7 +110,7 @@ export default async function OverviewPage() {
 
         <Card className="p-6 lg:col-span-2">
           <h2 className="font-semibold">Funil</h2>
-          <p className="mb-4 text-sm text-muted-foreground">Visitou → Lead → Checkout → Compra.</p>
+          <p className="mb-4 text-sm text-muted-foreground">Visitou → Checkout → Compra.</p>
           <FunnelSteps steps={funnel} />
         </Card>
       </div>

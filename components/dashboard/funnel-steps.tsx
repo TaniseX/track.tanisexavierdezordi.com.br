@@ -1,11 +1,14 @@
+// "lead" fica de fora do funil por decisão do usuário (etapa ainda não
+// confirmada/consistente na LP atual) — a RPC funnel_counts continua
+// retornando essa linha, só não é exibida aqui. Os dados de Lead em si
+// continuam disponíveis nos cards do topo e na aba Páginas.
 const STAGE_LABELS: Record<string, string> = {
   visited: "Visitou",
-  lead: "Lead",
   checkout: "Checkout",
   purchase: "Compra",
 };
 
-const STAGE_ORDER = ["visited", "lead", "checkout", "purchase"];
+const STAGE_ORDER = ["visited", "checkout", "purchase"];
 
 const SVG_WIDTH = 400;
 const BAND_HEIGHT = 68;
