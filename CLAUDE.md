@@ -4,7 +4,7 @@ Sistema de tracking server-side (Meta Conversions API + GA4 Measurement Protocol
 deduplicados com o client-side via `event_id`) com painel administrativo. Integra
 com o checkout **Guru** (Digital Manager Guru) via webhook. Cliente: Tanise
 Xavier de Zordi — fluxo de captação principal em
-`coluna.tanisexavierdezordi.com.br`.
+`movimentosemdor.tanisexavierdezordi.com.br`.
 
 Código herdado 1:1 (mesmo schema, mesma stack) do sistema construído antes
 pra `track.advflowpro.com` — o plano de fases original
@@ -381,7 +381,7 @@ com o client de `lib/supabase/admin.ts` (secret key), depois logar em `/login`.
 ## Site principal em múltiplos subdomínios (pós-deploy)
 
 O site (`tanisexavierdezordi.com.br`) roda em vários subdomínios — o fluxo
-principal de captação é `coluna.tanisexavierdezordi.com.br` ("Movimento Sem
+principal de captação é `movimentosemdor.tanisexavierdezordi.com.br` ("Movimento Sem
 Dor", programa online), além de possíveis `checkout.tanisexavierdezordi.com.br`
 etc (páginas geradas por outras ferramentas, fora deste repo). Isso já é
 coberto pelo `tracker.js`/CORS desde o início (herdado do projeto anterior
@@ -428,7 +428,7 @@ domínio e credenciais Supabase trocados; lógica e schema mantidos 1:1.
   primária sobe pra `158 75% 48%` (`#1fd693`) só pra manter contraste sobre
   o zinc-950 — mesmo tipo de ajuste luz→escuro que já existia. `--amber`
   continua só cor utilitária de status (badge "partial"), sem ligação com
-  marca. `coluna.tanisexavierdezordi.com.br` (fluxo principal) usa um verde
+  marca. `movimentosemdor.tanisexavierdezordi.com.br` (fluxo principal) usa um verde
   mais vibrante (`#00a876`) no próprio design system dela — não usado aqui,
   o painel segue a paleta do site principal por decisão do usuário.
 - **Sem asset de logo ainda** (a cliente não tinha um PNG pronto, diferente
@@ -458,7 +458,7 @@ domínio e credenciais Supabase trocados; lógica e schema mantidos 1:1.
   capturados na LP + `utm_term=trck_user_id` anexados. Documentado no
   cabeçalho do próprio `tracker.js`, com a receita de uso (`trackEvent("Lead")`
   no submit, `trckCheckoutUrl` + `trackEvent("InitiateCheckout")` antes do
-  redirect). Se `coluna.tanisexavierdezordi.com.br` tiver um popup desse tipo,
+  redirect). Se `movimentosemdor.tanisexavierdezordi.com.br` tiver um popup desse tipo,
   aplicar essa receita é responsabilidade de quem edita a LP (fora deste
   repo) — ainda não confirmado se é o caso aqui.
 - **Webhook da Guru**: além de "Gerar novo token" (aleatório), agora dá pra
@@ -599,7 +599,7 @@ Migration `0011` já aplicada em produção (confirmada: `funnel_counts`/
   formulário pro nosso lado, só pro sistema de LP/CRM em uso.
 - `components/dashboard/visitor-drawer.tsx` mostra "Nome" (e já mostrava
   email/telefone, que só ficavam vazios pela mesma causa acima).
-- **Pendente do lado da LP** (se `coluna.tanisexavierdezordi.com.br` tiver um
+- **Pendente do lado da LP** (se `movimentosemdor.tanisexavierdezordi.com.br` tiver um
   popup de lead): a chamada precisa ser
   `window.trackEvent("Lead", { name, email, phone })` com os dados do
   formulário — não confirmado ainda se essa LP usa esse padrão nem quais os
@@ -785,6 +785,6 @@ editor do projeto Supabase (`vbziznklmhckrkvrqghr`) — schema aplicado.
 - Nenhum logo real, credenciais de Meta/GA4/Guru ou domínio de checkout da
   Tanise cadastrados ainda — tudo isso é feito pelo painel depois do deploy,
   não faz parte deste rebrand de código.
-- Não confirmado se `coluna.tanisexavierdezordi.com.br` usa popup de lead
+- Não confirmado se `movimentosemdor.tanisexavierdezordi.com.br` usa popup de lead
   (recipe `trckCheckoutUrl`/`trackEvent("Lead")`) — checar ao integrar o
   `tracker.js` lá.

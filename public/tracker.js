@@ -32,9 +32,9 @@
  *   });
  *
  * Persistência do trck_user_id: cookie no domínio raiz (ex: .tanisexavierdezordi.com.br,
- * não no subdomínio atual) — assim o id sobrevive entre coluna.tanisexavierdezordi.com.br,
+ * não no subdomínio atual) — assim o id sobrevive entre movimentosemdor.tanisexavierdezordi.com.br,
  * checkout.tanisexavierdezordi.com.br etc (a maior parte do tráfego entra por
- * coluna.tanisexavierdezordi.com.br). localStorage sozinho NÃO funcionaria aqui
+ * movimentosemdor.tanisexavierdezordi.com.br). localStorage sozinho NÃO funcionaria aqui
  * (é isolado por subdomínio). Cookie setado pela nossa API (track.tanisexavierdezordi.com.br)
  * também não serviria — é cross-origin em relação ao site, cairia no
  * domínio errado. Por isso o cookie é setado aqui, pelo próprio script,
