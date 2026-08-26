@@ -14,7 +14,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
       <Card className="w-full max-w-sm p-8">
-        <Logo className="px-3 py-2" />
+        <Logo className="h-14 w-14" />
         <p className="mb-6 mt-3 text-sm text-muted-foreground">Entrar no painel de tracking</p>
 
         <form action={action} className="space-y-4">

@@ -431,18 +431,26 @@ domínio e credenciais Supabase trocados; lógica e schema mantidos 1:1.
   marca. `movimentosemdor.tanisexavierdezordi.com.br` (fluxo principal) usa um verde
   mais vibrante (`#00a876`) no próprio design system dela — não usado aqui,
   o painel segue a paleta do site principal por decisão do usuário.
-- **Sem asset de logo ainda** (a cliente não tinha um PNG pronto, diferente
-  do projeto anterior). `app/icon.tsx`/`app/apple-icon.tsx` geram o favicon
-  em runtime via `ImageResponse` do `next/og` (monograma "TX" sobre fundo
-  dark sólido — sem depender de arquivo). Trocar por um logo de verdade
-  assim que a cliente enviar um arquivo (recortar com `sharp`, mesmo processo
-  do projeto anterior).
-- **`components/layout/logo.tsx`**: wordmark em texto ("Tanise" branco +
-  "Xavier" na cor primária) — mesmo chip de fundo escuro fixo do projeto
-  anterior (`bg-[#09090b]`, hardcoded, não a variável de tema), pro texto
-  branco continuar legível nos dois temas do painel, sem precisar de asset.
-  Trocar por `<Image>` (mesmo componente do projeto anterior) quando tivermos
-  um logo de verdade. Usado em `Sidebar`, `MobileNav` e `LoginPage`.
+- **Logo real recebido e aplicado** (`Logo Dra. Tanise Xavier.png`, enviado
+  pela cliente — 1080×1080, fundo branco sólido, selo circular verde com
+  monograma "tw"/coluna estilizada + "TANISE XAVIER" no arco inferior).
+  Processado com `sharp` (script one-off, não versionado): recortado pro
+  bbox do conteúdo (remove a margem branca excessiva) e o fundo branco
+  removido via chave de cor (`alpha = 255 - min(r,g,b)` por pixel — funciona
+  bem aqui porque o traço é colorido sobre branco puro, sem branco usado de
+  propósito dentro do próprio desenho). Resultado: `public/brand/logo.png`
+  (512×512, transparente).
+- `app/icon.png`/`app/apple-icon.png`: o logo transparente **composto sobre
+  fundo dark sólido** (`#09090b`, 32×32 e 180×180) — favicon transparente
+  some em toolbar clara do navegador, mesmo motivo do projeto anterior.
+  Convenção de arquivo do Next.js App Router; substituíram os
+  `icon.tsx`/`apple-icon.tsx` que geravam o monograma "TX" via `next/og`
+  (removidos, não fazem mais sentido com o asset real disponível).
+- **`components/layout/logo.tsx`**: agora é `<Image src="/brand/logo.png">`
+  direto, sem chip de fundo fixo — diferente do wordmark em texto anterior
+  (que precisava de `bg-[#09090b]` pra o texto branco ficar legível), o logo
+  transparente funciona nos dois temas do painel sem embrulho nenhum. Usado
+  em `Sidebar`, `MobileNav` e `LoginPage` (maior, `h-14 w-14`, nesse último).
 
 ## Lead/InitiateCheckout em popups de LP + ajustes de painel (pós-deploy)
 

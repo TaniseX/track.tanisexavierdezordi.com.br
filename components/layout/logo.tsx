@@ -1,20 +1,22 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
- * Wordmark em texto (sem asset de imagem ainda — trocar por logo real assim
- * que tivermos o arquivo, mesmo padrão de chip escuro fixo usado no projeto
- * anterior pra garantir legibilidade nos dois temas do painel).
+ * Logo real da cliente (public/brand/logo.png) — recortado e com o fundo
+ * branco removido (chave de cor -> alpha) a partir do PNG enviado. Como o
+ * traço é verde/azul sobre fundo transparente, funciona direto nos dois
+ * temas do painel, sem precisar de chip de fundo fixo (diferente da versão
+ * anterior, que era um wordmark em texto branco só legível no escuro).
  */
 export function Logo({ className }: { className?: string }) {
   return (
-    <div
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md bg-[#09090b] px-2.5 py-1.5",
-        className,
-      )}
-    >
-      <span className="text-sm font-bold tracking-tight text-white">Tanise</span>
-      <span className="text-sm font-bold tracking-tight text-primary">Xavier</span>
-    </div>
+    <Image
+      src="/brand/logo.png"
+      alt="Tanise Xavier"
+      width={512}
+      height={512}
+      priority
+      className={cn("h-9 w-9", className)}
+    />
   );
 }
