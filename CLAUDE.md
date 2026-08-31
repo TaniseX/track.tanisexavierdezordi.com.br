@@ -767,7 +767,7 @@ Migration `0011` já aplicada em produção (confirmada: `funnel_counts`/
   bateriam nos critérios acima, apagados 70 visitantes e 54 eventos (0
   purchases — nenhuma compra tinha vindo de IP da Meta).
 
-## Webhook de compra Kiwify (pós-deploy, NÃO validado com payload real)
+## Webhook de compra Kiwify (pós-deploy)
 
 - **Descoberta**: o checkout real dessa cliente é **Kiwify**, não Guru — o
   sistema inteiro (webhook, matching, schema) foi herdado do projeto anterior
@@ -785,27 +785,42 @@ Migration `0011` já aplicada em produção (confirmada: `funnel_counts`/
   Trigger a marcar: pelo menos `compra_aprovada` (e `compra_reembolsada`/
   `chargeback` se quiser refletir estorno, embora hoje isso só atualize o
   status sem re-disparar nada — mesma filosofia da Guru).
-- **Risco assumido, registrado explicitamente**: a documentação oficial da
-  Kiwify pra formato de payload de webhook fica parte num Notion não
-  indexado/scrapeable — não foi possível confirmar 100% dos nomes de campo
-  (`order_status` vs `webhook_event_type`, forma exata de `TrackingParameters`,
-  etc). Só confirmado via doc oficial: os nomes dos triggers
-  (`compra_aprovada`, `compra_reembolsada`, `chargeback`, ...) e, via exemplo
-  de código de terceiro, os campos `Customer.full_name/email/mobile`,
-  `Subscription.start_date/next_payment`, `Commissions.my_commission`
-  (objetos aninhados em PascalCase). Por decisão do usuário, construído mesmo
-  assim ("constrír agora com o que temos") em vez de esperar um payload real
-  — diferente de como a Guru foi validada (webhook testado com payloads reais
-  documentados antes de ir pro ar). `lib/kiwify/webhook-schema.ts` reflete
-  isso: **schema deliberadamente frouxo** (`z.record`, não valida forma),
-  extração de campo via `pick()`/`pickString()`/`pickNumber()` que tenta
-  múltiplos nomes possíveis por campo, nunca lança erro por formato
-  inesperado. `raw_payload` em `purchases` sempre guarda o JSON cru, então
-  nada se perde mesmo se a extração errar um nome de campo.
-  **AJUSTAR assim que uma venda de teste real (ou o botão "Testar Webhook"
-  do painel da Kiwify) confirmar o formato real** — mesmo processo que
-  corrigiu bugs reais da Guru (payload com `null` explícito, timeout de
-  entrega — ver seção própria acima).
+- **Formato do payload CONFIRMADO** via um teste real (botão "Testar
+  Webhook" no painel da Kiwify, 2026-08-31 — payload de exemplo da própria
+  Kiwify, "Example product"/"John Doe", mas com a estrutura real). Campos
+  confirmados: `order_id`, `order_status` (enum oficial da OpenAPI —
+  `paid | pending | refused | chargeback | refunded`), `webhook_event_type`
+  ("order_approved" no teste), `payment_method` (top-level), `created_at`/
+  `approved_date`/`refunded_at` (formato `"YYYY-MM-DD HH:MM"`, sem timezone
+  explícito — assumido UTC), `Customer` (`full_name`, `first_name`, `email`,
+  `mobile`, `ip`, `city`, `state`, `zipcode`, `cnpj` — **sem campo de país**,
+  assumido `"BR"`), `Product.product_id`/`product_name`, `Commissions`
+  (`charge_amount`, `product_base_price`, `currency`), `TrackingParameters`
+  (`utm_source/medium/campaign/term/content`, `src`, `sck`, `s1-s3`).
+  `lib/kiwify/webhook-schema.ts` continua com schema frouxo (`z.record` +
+  `pick()`/`pickString()`/`pickNumber()` tentando múltiplos nomes) de
+  propósito — não porque o formato seja incerto agora, mas porque a Kiwify
+  pode mandar payloads ligeiramente diferentes por trigger (venda normal vs
+  assinatura vs reembolso) e o objetivo é nunca rejeitar por formato
+  inesperado; `raw_payload` sempre guarda o JSON cru.
+- **Valores monetários em CENTAVOS** — `Commissions.charge_amount`/
+  `product_base_price` vêm como inteiro sem casas decimais (`3584` no
+  teste). Não documentado explicitamente em lugar nenhum acessível, mas
+  inferido com boa confiança (exemplos da própria doc oficial só fazem
+  sentido como centavos: preços de curso na casa de centenas de reais, não
+  dezenas de milhares) e batendo com o valor de uma assinatura semanal
+  plausível no teste real (`R$35,84`/semana, não `R$3.584`/semana).
+  `lib/kiwify/process-purchase.ts` divide por 100 antes de gravar
+  `gross_value`/`net_value` e antes de mandar `value` pro Meta CAPI/GA4.
+  **Conferir contra uma venda de verdade** (comparar Faturamento no painel
+  vs valor exibido no painel da Kiwify) assim que houver uma — se estiver
+  errado, é só remover a divisão.
+- **Event Match Quality**: `dispatchPurchaseEvent` manda o máximo de sinal
+  disponível — `Customer.ip` como `client_ip_address`, endereço declarado
+  (`Customer.city/state/zipcode`, país assumido `"BR"`) tem prioridade sobre
+  o geo do visitante casado (mesma prioridade usada na Guru:
+  declarado-pelo-comprador > navegação anterior). Sem `user_agent` (não
+  existe campo equivalente confirmado no payload da Kiwify).
 - **Reaproveita `purchases.guru_transaction_id`** pra guardar o `order_id`
   da Kiwify — nome da coluna ficou desatualizado (só fazia sentido quando só
   existia Guru), mas como só um provedor de checkout está ativo por vez, não
@@ -820,20 +835,27 @@ Migration `0011` já aplicada em produção (confirmada: `funnel_counts`/
 - **`trck_user_id` não chega no payload hoje**: o link de checkout na LP
   (`movimentosemdor.tanisexavierdezordi.com.br`) é **estático e hardcoded**
   (`kiwifyCheckout: "https://pay.kiwify.com.br/j8e749d"` no bundle da LP,
-  confirmado inspecionando o JS), sem nenhuma utm anexada — então o
-  matching por `trck_user_id` (via `TrackingParameters.utm_term`, mesma
-  convenção da Guru) nunca vai bater até o link virar dinâmico. Matching por
-  email/telefone continua funcionando normalmente (é o fallback já usado
-  quando `utm_term` falta). **Pendente do lado da LP**: trocar o link
-  estático por um montado com `window.trckCheckoutUrl()` (já documentado na
-  seção "Lead/InitiateCheckout em popups de LP"), supondo que a Kiwify ecoe
-  utms recebidas na URL de checkout em `TrackingParameters` — também não
-  confirmado com certeza.
-- **Sem geo estruturado da Kiwify** (a Guru manda `contact.address_*` e
-  `infrastructure.*`; nada equivalente confirmado no payload da Kiwify) —
-  o Purchase da Kiwify usa só o geo do visitante casado via navegação
-  anterior (`match.visitor.geo_*`), sem fallback de IP/endereço declarado.
-- **Não testado de ponta a ponta** — nenhuma venda real ou de teste rodou
+  confirmado inspecionando o JS), sem nenhuma utm anexada — o teste real
+  confirma isso: `TrackingParameters` existe no payload (campo real,
+  confirmado), mas veio com todos os valores `null` (`utm_term`, `src`,
+  etc), exatamente porque não havia utm nenhuma na URL de checkout usada no
+  teste. Matching por `trck_user_id` só vai funcionar quando o link virar
+  dinâmico — matching por email/telefone continua funcionando normalmente
+  (fallback já usado quando `utm_term` falta). **Ainda não confirmado**:
+  se a Kiwify de fato ecoa em `TrackingParameters` as utms que estavam
+  presentes na URL de checkout no momento da compra (só testamos com URL
+  sem utm nenhuma) — **pendente do lado da LP**: trocar o link estático por
+  um montado com `window.trckCheckoutUrl()` (já documentado na seção
+  "Lead/InitiateCheckout em popups de LP") e então testar de novo com utms
+  reais na URL pra confirmar que aparecem no webhook.
+- **Testado uma vez** (botão "Testar Webhook" da Kiwify, 2026-08-31): chegou,
+  passou pelo `webhook_token`, `order_status`/`webhook_event_type`
+  reconhecidos como venda aprovada, `purchases` gravado, Purchase disparado
+  pro Meta CAPI com sucesso (`events_received: 1`). Registro de teste
+  apagado do banco depois (dado fake, não uma venda real). **Ainda não
+  testado**: uma venda de verdade (valor/CPF/endereço reais, ciclo completo
+  incluindo GA4 — o teste não disparou GA4 porque não havia visitante
+  casado, logo sem `ga_client_id`) nem os triggers de reembolso/chargeback.
   contra esse código ainda.
 
 ## Estado atual
