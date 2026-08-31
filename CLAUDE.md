@@ -767,6 +767,75 @@ Migration `0011` já aplicada em produção (confirmada: `funnel_counts`/
   bateriam nos critérios acima, apagados 70 visitantes e 54 eventos (0
   purchases — nenhuma compra tinha vindo de IP da Meta).
 
+## Webhook de compra Kiwify (pós-deploy, NÃO validado com payload real)
+
+- **Descoberta**: o checkout real dessa cliente é **Kiwify**, não Guru — o
+  sistema inteiro (webhook, matching, schema) foi herdado do projeto anterior
+  pronto pra Guru. `app/api/webhook/kiwify/[token]/route.ts` +
+  `lib/kiwify/*` foram adicionados **em paralelo** ao webhook da Guru
+  (`app/api/webhook/guru/[token]/route.ts` continua existindo, intocado —
+  não removido, caso volte a ser necessário).
+- **Mesmo segredo, path diferente**: a Kiwify não usa um mecanismo de
+  assinatura/token próprio conhecido — a segurança vem do path secreto na
+  URL, mesmo padrão da Guru. Reaproveita o **mesmo** `webhook_token_id` já
+  cadastrado em Configurações (não precisou de migration nova). Pra ativar:
+  em Kiwify → Configurações → Webhooks → Criar webhook, colar como URL:
+  `https://track.tanisexavierdezordi.com.br/api/webhook/kiwify/<token>`
+  (o mesmo token que já aparece na URL do webhook da Guru em Configurações).
+  Trigger a marcar: pelo menos `compra_aprovada` (e `compra_reembolsada`/
+  `chargeback` se quiser refletir estorno, embora hoje isso só atualize o
+  status sem re-disparar nada — mesma filosofia da Guru).
+- **Risco assumido, registrado explicitamente**: a documentação oficial da
+  Kiwify pra formato de payload de webhook fica parte num Notion não
+  indexado/scrapeable — não foi possível confirmar 100% dos nomes de campo
+  (`order_status` vs `webhook_event_type`, forma exata de `TrackingParameters`,
+  etc). Só confirmado via doc oficial: os nomes dos triggers
+  (`compra_aprovada`, `compra_reembolsada`, `chargeback`, ...) e, via exemplo
+  de código de terceiro, os campos `Customer.full_name/email/mobile`,
+  `Subscription.start_date/next_payment`, `Commissions.my_commission`
+  (objetos aninhados em PascalCase). Por decisão do usuário, construído mesmo
+  assim ("constrír agora com o que temos") em vez de esperar um payload real
+  — diferente de como a Guru foi validada (webhook testado com payloads reais
+  documentados antes de ir pro ar). `lib/kiwify/webhook-schema.ts` reflete
+  isso: **schema deliberadamente frouxo** (`z.record`, não valida forma),
+  extração de campo via `pick()`/`pickString()`/`pickNumber()` que tenta
+  múltiplos nomes possíveis por campo, nunca lança erro por formato
+  inesperado. `raw_payload` em `purchases` sempre guarda o JSON cru, então
+  nada se perde mesmo se a extração errar um nome de campo.
+  **AJUSTAR assim que uma venda de teste real (ou o botão "Testar Webhook"
+  do painel da Kiwify) confirmar o formato real** — mesmo processo que
+  corrigiu bugs reais da Guru (payload com `null` explícito, timeout de
+  entrega — ver seção própria acima).
+- **Reaproveita `purchases.guru_transaction_id`** pra guardar o `order_id`
+  da Kiwify — nome da coluna ficou desatualizado (só fazia sentido quando só
+  existia Guru), mas como só um provedor de checkout está ativo por vez, não
+  há colisão de verdade. Renomear a coluna exigiria migration nova; adiado
+  até ter motivo real (os dois provedores ativos ao mesmo tempo, por
+  exemplo).
+- **`matchVisitor` reaproveitado de `lib/guru/match-visitor.ts`** (importado
+  direto, não duplicado) — a função já era 100% genérica (cascata
+  trck_user_id → email → telefone → unmatched via hash), apesar do nome da
+  pasta. Idem `dispatchEvent`/`hashing`/`splitName` — zero duplicação de
+  lógica de disparo entre os dois webhooks.
+- **`trck_user_id` não chega no payload hoje**: o link de checkout na LP
+  (`movimentosemdor.tanisexavierdezordi.com.br`) é **estático e hardcoded**
+  (`kiwifyCheckout: "https://pay.kiwify.com.br/j8e749d"` no bundle da LP,
+  confirmado inspecionando o JS), sem nenhuma utm anexada — então o
+  matching por `trck_user_id` (via `TrackingParameters.utm_term`, mesma
+  convenção da Guru) nunca vai bater até o link virar dinâmico. Matching por
+  email/telefone continua funcionando normalmente (é o fallback já usado
+  quando `utm_term` falta). **Pendente do lado da LP**: trocar o link
+  estático por um montado com `window.trckCheckoutUrl()` (já documentado na
+  seção "Lead/InitiateCheckout em popups de LP"), supondo que a Kiwify ecoe
+  utms recebidas na URL de checkout em `TrackingParameters` — também não
+  confirmado com certeza.
+- **Sem geo estruturado da Kiwify** (a Guru manda `contact.address_*` e
+  `infrastructure.*`; nada equivalente confirmado no payload da Kiwify) —
+  o Purchase da Kiwify usa só o geo do visitante casado via navegação
+  anterior (`match.visitor.geo_*`), sem fallback de IP/endereço declarado.
+- **Não testado de ponta a ponta** — nenhuma venda real ou de teste rodou
+  contra esse código ainda.
+
 ## Estado atual
 
 Código herdado 1:1 do sistema construído pra `track.advflowpro.com` (fases
@@ -776,23 +845,31 @@ geo em 4 colunas, Eventos com drawer de visitante, aba Páginas, Faturamento
 com UTMs — tudo descrito acima e presente no código deste repo).
 
 Rebrand pra Tanise Xavier de Zordi feito: paleta verde extraída de
-`tanisexavierdezordi.com.br` (`app/globals.css`), wordmark em texto (sem
-asset de logo ainda), favicon gerado via `next/og` (sem asset), CORS/cookie
-de domínio raiz apontando pra `*.tanisexavierdezordi.com.br`, referências de
-domínio em comentários/textos ajustadas.
+`tanisexavierdezordi.com.br` (`app/globals.css`), logo real aplicado (favicon,
+painel, login — ver seção "Identidade visual"), tema claro como padrão
+(toggle pro escuro mantido), CORS/cookie de domínio raiz apontando pra
+`*.tanisexavierdezordi.com.br`, referências de domínio em comentários/textos
+ajustadas.
 
 Repo Git inicializado, commit do rebrand feito e push pro remoto
 `TaniseX/track.tanisexavierdezordi.com.br` concluído (branch `main`). As 18
 migrations em `supabase/migrations/` já foram coladas e rodadas no SQL
-editor do projeto Supabase (`vbziznklmhckrkvrqghr`) — schema aplicado.
+editor do projeto Supabase (`vbziznklmhckrkvrqghr`) — schema aplicado. Primeiro
+usuário admin já criado — painel acessível em `/login`.
+
+Checkout real da cliente é **Kiwify**, não Guru — webhook adicionado em
+paralelo (`app/api/webhook/kiwify/[token]/route.ts` + `lib/kiwify/*`, ver
+seção própria acima), mas **não validado com payload real** ainda, e o link
+de checkout na LP ainda é estático (sem `trck_user_id`/utms).
 
 **Ainda pendente**:
-- Gerar os tipos TypeScript do schema (ver seção Migrations) e criar o
-  primeiro usuário admin (ver seção própria) — banco existe, mas ninguém
-  loga no painel ainda.
-- Nenhum logo real, credenciais de Meta/GA4/Guru ou domínio de checkout da
-  Tanise cadastrados ainda — tudo isso é feito pelo painel depois do deploy,
-  não faz parte deste rebrand de código.
-- Não confirmado se `movimentosemdor.tanisexavierdezordi.com.br` usa popup de lead
-  (recipe `trckCheckoutUrl`/`trackEvent("Lead")`) — checar ao integrar o
-  `tracker.js` lá.
+- Gerar os tipos TypeScript do schema (ver seção Migrations) — só qualidade
+  de vida de tipagem, não bloqueia nada (decisão do usuário: não fazer por
+  enquanto).
+- Credenciais de Meta Pixel/GA4/webhook token já cadastradas; falta confirmar
+  o webhook Kiwify contra uma venda real e trocar o link de checkout da LP
+  pra dinâmico (ver seção "Webhook de compra Kiwify").
+- Não confirmado se `movimentosemdor.tanisexavierdezordi.com.br` usa popup de
+  lead (recipe `trckCheckoutUrl`/`trackEvent("Lead")`) além do botão de
+  checkout — `InitiateCheckout` já foi corrigido (onClick no botão), `Lead`
+  ainda não confirmado.
