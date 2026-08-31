@@ -20,7 +20,8 @@ export default async function ConfiguracoesPage() {
   const headersList = await headers();
   const host = headersList.get("host") ?? "track.tanisexavierdezordi.com.br";
   const protocol = host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https";
-  const webhookUrl = webhookToken ? `${protocol}://${host}/api/webhook/guru/${webhookToken}` : null;
+  const guruWebhookUrl = webhookToken ? `${protocol}://${host}/api/webhook/guru/${webhookToken}` : null;
+  const kiwifyWebhookUrl = webhookToken ? `${protocol}://${host}/api/webhook/kiwify/${webhookToken}` : null;
 
   const admin = createAdminClient();
   const [ga4, pixels, adAccounts, internalIps] = await Promise.all([
@@ -40,27 +41,49 @@ export default async function ConfiguracoesPage() {
       </div>
 
       <Card className="space-y-4 p-6">
-        <h2 className="font-semibold">Webhook da Guru</h2>
-        {webhookUrl ? (
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <code className="flex-1 truncate rounded-md border border-border bg-background px-3 py-2 font-mono text-xs">
-              {webhookUrl}
-            </code>
-            <CopyButton value={webhookUrl} />
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Nenhum token gerado ainda.</p>
-        )}
+        <h2 className="font-semibold">Webhook de compra</h2>
+        <p className="text-sm text-muted-foreground">
+          Mesmo token, duas URLs — cole a que for usar no cadastro de webhook da respectiva
+          plataforma (só uma costuma estar ativa por vez).
+        </p>
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Kiwify</p>
+          {kiwifyWebhookUrl ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <code className="flex-1 truncate rounded-md border border-border bg-background px-3 py-2 font-mono text-xs">
+                {kiwifyWebhookUrl}
+              </code>
+              <CopyButton value={kiwifyWebhookUrl} />
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhum token gerado ainda.</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Digital Manager Guru</p>
+          {guruWebhookUrl ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <code className="flex-1 truncate rounded-md border border-border bg-background px-3 py-2 font-mono text-xs">
+                {guruWebhookUrl}
+              </code>
+              <CopyButton value={guruWebhookUrl} />
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhum token gerado ainda.</p>
+          )}
+        </div>
+
         <form action={regenerateWebhookToken}>
           <Button type="submit" variant="outline" size="sm">
             <RefreshCw className="h-4 w-4" />
-            {webhookUrl ? "Gerar novo token" : "Gerar token"}
+            {guruWebhookUrl ? "Gerar novo token" : "Gerar token"}
           </Button>
         </form>
         <p className="text-xs text-muted-foreground">
-          Cole essa URL no cadastro de webhook da Digital Manager Guru. Trocar o token (gerado
-          automaticamente ou definido manualmente abaixo) invalida o anterior — vai precisar
-          atualizar lá também.
+          Trocar o token (gerado automaticamente ou definido manualmente abaixo) invalida as duas
+          URLs acima — vai precisar atualizar no cadastro de webhook da plataforma em uso.
         </p>
 
         <div className="border-t border-border pt-4">
