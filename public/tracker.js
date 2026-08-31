@@ -5,7 +5,10 @@
  *   <script src="https://track.tanisexavierdezordi.com.br/tracker.js" async></script>
  *
  * Carrega o Meta Pixel e o gtag.js dinamicamente (pixel_id/measurement_id
- * vêm do painel, não hardcoded), identifica o visitante e expõe:
+ * vêm do painel, não hardcoded), identifica o visitante, dispara PageView
+ * automático em toda troca de rota (inclusive navegação client-side de SPA —
+ * pushState/replaceState/popstate interceptados, sem precisar de chamada
+ * manual por página) e expõe:
  *
  *   window.trckUserId          -> string, usar em links de checkout/WhatsApp
  *   window.trackEvent(name, params) -> dispara pro pixel, pro gtag e pro
@@ -314,4 +317,28 @@
   identifyPromise.then(function () {
     trackEvent("PageView", {});
   });
+
+  // Detecção de navegação client-side de SPA (React Router e afins): sem
+  // isso, um site com rota trocada via pushState/replaceState — sem reload —
+  // nunca dispara PageView de novo (esse script só roda uma vez, no load
+  // inicial), então páginas visitadas só por navegação interna (ex: links de
+  // rodapé pra Termos de Uso/Política de Privacidade) nunca apareceriam com
+  // a URL certa no painel — tudo ficaria atribuído à URL de entrada. Técnica
+  // padrão de scripts de analytics em SPA: interceptar as funções que mudam
+  // a URL sem reload + escutar popstate (botão voltar/avançar do navegador).
+  var lastPageViewUrl = window.location.href;
+  function maybeTrackPageView() {
+    if (window.location.href === lastPageViewUrl) return;
+    lastPageViewUrl = window.location.href;
+    trackEvent("PageView", {});
+  }
+  ["pushState", "replaceState"].forEach(function (method) {
+    var original = history[method];
+    history[method] = function () {
+      var result = original.apply(this, arguments);
+      maybeTrackPageView();
+      return result;
+    };
+  });
+  window.addEventListener("popstate", maybeTrackPageView);
 })();

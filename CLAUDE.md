@@ -856,7 +856,29 @@ Migration `0011` já aplicada em produção (confirmada: `funnel_counts`/
   testado**: uma venda de verdade (valor/CPF/endereço reais, ciclo completo
   incluindo GA4 — o teste não disparou GA4 porque não havia visitante
   casado, logo sem `ga_client_id`) nem os triggers de reembolso/chargeback.
-  contra esse código ainda.
+
+## PageView em navegação de SPA (pós-deploy)
+
+- **Motivação**: pedido pra Termos de Uso/Política de Privacidade
+  aparecerem no painel quando visitadas — investigando, `movimentosemdor.tanisexavierdezordi.com.br`
+  é uma SPA (React Router, mesmo `index.html`/bundle servido pra qualquer
+  path, confirmado testando rotas inexistentes — todas devolvem o mesmo
+  HTML). `tracker.js` só disparava `PageView` **uma vez**, na carga inicial
+  do script — navegar pra outra rota via link interno (sem reload de
+  página) nunca disparava PageView novo pra essa URL, então qualquer página
+  visitada só por navegação interna (não só Termos/Privacidade — qualquer
+  rota do site) ficava com o PageView atribuído à URL de entrada, nunca à
+  URL real visitada.
+- **Fix em `public/tracker.js`**: técnica padrão de scripts de analytics em
+  SPA — intercepta `history.pushState`/`history.replaceState` (como React
+  Router e a maioria dos client-side routers mudam a URL por baixo) +
+  escuta `popstate` (botão voltar/avançar do navegador), comparando a URL
+  antes/depois pra disparar `PageView` de novo só quando ela realmente
+  muda. Não precisa de nenhuma chamada manual por página nova — funciona
+  pra Termos de Uso, Política de Privacidade e qualquer rota futura do site
+  automaticamente, sem precisar tocar em código da LP.
+- **Sem migration nem mudança de schema** — `event_name`/`event_source_url`
+  já eram genéricos, só faltava o `tracker.js` disparar no momento certo.
 
 ## Estado atual
 
