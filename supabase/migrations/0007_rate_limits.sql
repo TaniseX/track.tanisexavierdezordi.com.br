@@ -39,7 +39,10 @@ begin
 end;
 $$;
 
-revoke all on function check_rate_limit(text, integer, integer) from public;
+-- from public sozinho não basta no Supabase — ver comentário em
+-- 0006_vault_helpers.sql (mesma causa raiz do incidente de segurança
+-- documentado no CLAUDE.md).
+revoke all on function check_rate_limit(text, integer, integer) from public, anon, authenticated;
 grant execute on function check_rate_limit(text, integer, integer) to service_role;
 
 comment on table rate_limits is 'Linhas antigas (window_start < now() - 1 dia) podem ser podadas periodicamente — ver retenção da Fase 7.';

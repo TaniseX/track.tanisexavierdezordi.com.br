@@ -8,6 +8,7 @@ import { VisitorDrawer } from "@/components/dashboard/visitor-drawer";
 import { formatDateTime } from "@/lib/format";
 import { eventColorClass } from "@/lib/dashboard/event-colors";
 import { resolveCampaignNames } from "@/lib/dashboard/resolve-campaign-names";
+import { originFromReferrer } from "@/lib/dashboard/origin-label";
 import { getDashboardDateRange } from "@/lib/dashboard/date-range";
 
 const PAGE_SIZE = 25;
@@ -25,7 +26,7 @@ export default async function EventosPage({
   let query = supabase
     .from("events_log")
     .select(
-      "id, event_id, event_name, status, value, currency, created_at, trck_user_id, utm_campaign, utm_content, geo_country, geo_region, geo_city, payload_meta, response_meta, payload_ga4, response_ga4",
+      "id, event_id, event_name, status, value, currency, created_at, trck_user_id, utm_source, utm_campaign, utm_content, geo_country, geo_region, geo_city, payload_meta, response_meta, payload_ga4, response_ga4, visitor:visitor_id(referrer)",
     )
     .gte("created_at", range.from)
     .lte("created_at", range.to)
@@ -129,9 +130,17 @@ export default async function EventosPage({
                           {adsetName && <p className="truncate text-muted-foreground">{adsetName}</p>}
                           {adName && <p className="truncate text-muted-foreground">{adName}</p>}
                         </div>
+                      ) : row.utm_campaign || row.utm_content ? (
+                        <span className="text-muted-foreground">
+                          {`${row.utm_campaign ?? ""} ${row.utm_content ?? ""}`.trim()}
+                        </span>
+                      ) : row.utm_source ? (
+                        <span className="text-muted-foreground">{row.utm_source}</span>
                       ) : (
                         <span className="text-muted-foreground">
-                          {row.utm_campaign || row.utm_content ? `${row.utm_campaign ?? ""} ${row.utm_content ?? ""}`.trim() : "—"}
+                          {originFromReferrer(
+                            (row.visitor as unknown as { referrer: string | null } | null)?.referrer,
+                          )}
                         </span>
                       )}
                     </td>

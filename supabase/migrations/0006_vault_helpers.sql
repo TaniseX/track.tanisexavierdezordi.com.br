@@ -29,9 +29,16 @@ as $$
   select decrypted_secret from vault.decrypted_secrets where id = secret_id;
 $$;
 
-revoke all on function create_secret(text, text) from public;
-revoke all on function update_secret(uuid, text) from public;
-revoke all on function read_secret(uuid) from public;
+-- `revoke ... from public` sozinho NÃO bloqueia anon/authenticated no
+-- Supabase — esses roles recebem EXECUTE em funções novas do schema public
+-- via ALTER DEFAULT PRIVILEGES própria do projeto, um grant direto (não
+-- herdado do pseudo-role public). Sem revogar explicitamente de anon e
+-- authenticated também, essas funções security definer ficam chamáveis por
+-- qualquer um com a publishable key — inclusive read_secret, vazando todos
+-- os segredos do Vault. Descoberto e corrigido em auditoria (ver CLAUDE.md).
+revoke all on function create_secret(text, text) from public, anon, authenticated;
+revoke all on function update_secret(uuid, text) from public, anon, authenticated;
+revoke all on function read_secret(uuid) from public, anon, authenticated;
 grant execute on function create_secret(text, text) to service_role;
 grant execute on function update_secret(uuid, text) to service_role;
 grant execute on function read_secret(uuid) to service_role;

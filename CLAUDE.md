@@ -880,6 +880,63 @@ Migration `0011` já aplicada em produção (confirmada: `funnel_counts`/
 - **Sem migration nem mudança de schema** — `event_name`/`event_source_url`
   já eram genéricos, só faltava o `tracker.js` disparar no momento certo.
 
+## Origem por referrer/direto na aba Eventos (pós-deploy)
+
+- Coluna "Origem" mostrava só campanha/anúncio resolvido → utm_campaign/
+  utm_content cru → `"—"`. Passou a ter mais dois níveis de fallback antes
+  do traço: `utm_source` cru do próprio evento, e por último o `referrer`
+  do visitante casado (`visitors.referrer`, capturado no primeiro
+  `/api/identify`) — vira `"Referência: <host>"` ou `"Direto"` quando não
+  há referrer nenhum. `lib/dashboard/origin-label.ts` (`originFromReferrer`).
+  Usa `referrer` do **visitante**, não do evento (não existe coluna
+  `referrer` em `events_log`, só em `visitors`) — decisão deliberada: é uma
+  classificação de canal (direto/referência), conceito de sessão/visitante
+  na análise de tráfego, não um dado específico daquele evento — diferente
+  do fix de utm-por-evento (Fase pós-deploy anterior), que era sobre não
+  reusar a utm errada.
+
+## Incidente de segurança: Vault RPCs sem privilégio restrito de verdade (pós-deploy)
+
+- **Achado numa auditoria pedida pelo usuário** ("verifique toda a
+  estrutura... quero botar o projeto pra rodar"), 2026-08-31: testei as
+  funções RPC do Vault (`read_secret`/`create_secret`/`update_secret`,
+  migration `0006`) direto com a **publishable key** (a chave pública, que
+  fica exposta no bundle do navegador) e todas funcionavam — dava pra ler
+  (e escrever) qualquer segredo do Vault: token do Meta CAPI, api_secret do
+  GA4, access_token da conta de anúncio, token do webhook. `check_rate_limit`
+  (migration `0007`) e `purge_old_event_payloads`/`purge_old_rate_limits`
+  (migration `0010`) tinham o mesmo problema (menos grave — não vazam
+  segredo, mas deveriam ser só do servidor).
+- **Causa raiz**: todas essas migrations faziam só `revoke all on function X
+  from public`. No Postgres do Supabase, `anon`/`authenticated` recebem
+  `EXECUTE` em funções novas do schema `public` via `ALTER DEFAULT
+  PRIVILEGES` própria do projeto — um grant **direto** pro role, não
+  herdado do pseudo-role `public`. `revoke ... from public` nunca tocava
+  nesse grant direto, então a "proteção" das migrations originais nunca
+  funcionou de verdade — RLS nas tabelas em si sempre esteve correto
+  (confirmado: `anon` não lê `purchases`/`visitors`/`events_log` direto),
+  só as funções `security definer` (que *ignoram* RLS de propósito, pra
+  poder acessar `vault.*`) ficaram expostas.
+- **Fix**: `revoke ... from public, anon, authenticated` explícito (não só
+  `public`) + confirma `grant ... to service_role`. Aplicado direto no banco
+  em produção via SQL editor (não é uma migration numerada nova — correção
+  de privilégio em cima de functions já existentes) **e** as migrations
+  originais `0006`/`0007`/`0010` no repo foram corrigidas pra já nascerem
+  certas (diferente da política normal de "não editar migration já
+  aplicada" — aqui vale a exceção, porque deixar o SQL original no repo
+  reintroduziria a mesma vulnerabilidade em qualquer projeto novo que rodar
+  essas migrations do zero, incluindo o próximo rebrand deste sistema pra
+  outro cliente).
+- **Segredos tratados como comprometidos** (estavam legíveis publicamente,
+  mesmo sem evidência de exploração real): token do webhook, token do Meta
+  CAPI, api_secret do GA4, access_token da conta de anúncio — usuário
+  orientado a regenerar os 4 e recadastrar no painel.
+- **Verificado que não tem mais nenhuma função no mesmo padrão** (grep por
+  `revoke all on function` em todas as migrations — só essas 6, todas
+  corrigidas). RPCs do dashboard (`funnel_counts`, `billing_summary` etc)
+  não são `security definer` de propósito (rodam com privilégio de quem
+  chama, `authenticated`, que já tem select via RLS) — não se aplicam aqui.
+
 ## Estado atual
 
 Código herdado 1:1 do sistema construído pra `track.advflowpro.com` (fases

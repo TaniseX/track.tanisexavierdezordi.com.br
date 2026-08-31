@@ -47,7 +47,10 @@ begin
 end;
 $$;
 
-revoke all on function purge_old_event_payloads() from public;
+-- from public sozinho não basta no Supabase — ver comentário em
+-- 0006_vault_helpers.sql (mesma causa raiz do incidente de segurança
+-- documentado no CLAUDE.md).
+revoke all on function purge_old_event_payloads() from public, anon, authenticated;
 grant execute on function purge_old_event_payloads() to service_role;
 
 select cron.schedule(
@@ -70,7 +73,7 @@ as $$
   select count(*)::integer from deleted;
 $$;
 
-revoke all on function purge_old_rate_limits() from public;
+revoke all on function purge_old_rate_limits() from public, anon, authenticated;
 grant execute on function purge_old_rate_limits() to service_role;
 
 select cron.schedule(
