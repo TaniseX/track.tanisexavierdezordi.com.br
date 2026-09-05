@@ -241,8 +241,30 @@
     return identify();
   });
 
+  // Guarda contra chamada duplicada de trackEvent() pro MESMO evento (mesmo
+  // nome, mesma página, mesmos params) em sequência rápida — descoberto via
+  // auditoria de dados reais: InitiateCheckout duplicando (event_id
+  // diferente a cada vez, então não é reenvio de rede/dedup — é o botão de
+  // checkout da LP disparando trackEvent() mais de uma vez por clique,
+  // provável handler duplicado no elemento). Não resolve a causa raiz (isso
+  // é do lado da LP), mas evita que o Meta/GA4/painel recebam o sinal
+  // inflado enquanto isso não é corrigido lá. Janela de 3s cobre o maior
+  // intervalo observado entre disparos duplicados (~2.2s).
+  var DEDUP_WINDOW_MS = 3000;
+  var lastEventFingerprint = null;
+  var lastEventAt = 0;
+
   function trackEvent(eventName, params) {
     params = params || {};
+
+    var fingerprint = eventName + "|" + window.location.href + "|" + JSON.stringify(params);
+    var now = Date.now();
+    if (fingerprint === lastEventFingerprint && now - lastEventAt < DEDUP_WINDOW_MS) {
+      return Promise.resolve(null);
+    }
+    lastEventFingerprint = fingerprint;
+    lastEventAt = now;
+
     var eventId = uuid();
 
     return identifyPromise.then(function (trckUserId) {

@@ -937,6 +937,41 @@ Migration `0011` já aplicada em produção (confirmada: `funnel_counts`/
   não são `security definer` de propósito (rodam com privilégio de quem
   chama, `authenticated`, que já tem select via RLS) — não se aplicam aqui.
 
+## Duplicação de eventos (pós-deploy)
+
+- **Achado numa auditoria pedida pelo usuário** ("estou notando muita coisa
+  duplicada, pageview e initiate checkout duplicado"), 2026-09-05: baixados
+  os últimos 114 eventos e agrupados por visitante + janela de 3s entre
+  eventos do mesmo nome. Resultado: **`InitiateCheckout` duplicava de
+  verdade** — 7 de 33 (~21%) eram excesso, em 6 clusters (a maioria pares,
+  um cluster com 3 disparos em 366ms). `PageView` só teve 1 anomalia em 81
+  (não é padrão sistêmico, só um caso isolado).
+- **Confirmado que não é bug deste repo nem reenvio/rede**: cada duplicata
+  tem `event_id` **diferente** (a Kiwify/Meta deduplicam por `event_id`
+  idêntico — se fosse reenvio de rede, o `event_id` seria o mesmo).
+  `event_source_url` idêntico byte a byte entre as duplicatas (mesmo
+  `fbclid`, mesmas utms) — confirma que é o MESMO carregamento de página, a
+  LP chamando `window.trackEvent("InitiateCheckout", {})` mais de uma vez
+  pro mesmo clique (handler duplicado no botão, provavelmente — não
+  investigável sem acesso ao código-fonte da LP, que é um projeto
+  separado). `tracker.js`/`dispatch-event.ts`/`/api/event` não têm nenhuma
+  lógica de retry que explicasse isso.
+- **Mitigação aplicada em `public/tracker.js`**: `trackEvent()` agora ignora
+  uma chamada se for **idêntica** (mesmo `eventName` + `window.location.href`
+  + `params` serializados) à imediatamente anterior, dentro de uma janela
+  de 3s. Não corrige a causa raiz (isso é do lado da LP — o botão de
+  checkout continua chamando a função mais de uma vez por clique), mas
+  evita que o Meta/GA4/painel recebam o sinal inflado enquanto isso não é
+  corrigido lá. Cobre `PageView`/`InitiateCheckout`/`Lead`/`Obrigado`/
+  qualquer evento futuro igualmente (é no `trackEvent()` genérico, não
+  específico de um nome de evento).
+- **Pendente do lado da LP**: investigar por que o clique no botão "Comprar
+  agora" (ver seção "Webhook de compra Kiwify" pro contexto do link
+  dinâmico via `trckCheckoutUrl`) dispara `trackEvent("InitiateCheckout")`
+  mais de uma vez — suspeita: handler de clique registrado em mais de um
+  elemento (ex: wrapper + botão interno) ou efeito React que re-anexa o
+  listener sem limpar o anterior.
+
 ## Estado atual
 
 Código herdado 1:1 do sistema construído pra `track.advflowpro.com` (fases
