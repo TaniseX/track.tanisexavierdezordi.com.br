@@ -970,7 +970,56 @@ Migration `0011` já aplicada em produção (confirmada: `funnel_counts`/
   dinâmico via `trckCheckoutUrl`) dispara `trackEvent("InitiateCheckout")`
   mais de uma vez — suspeita: handler de clique registrado em mais de um
   elemento (ex: wrapper + botão interno) ou efeito React que re-anexa o
-  listener sem limpar o anterior.
+  listener sem limpar o anterior. **Update**: a LP aplicou uma guarda a
+  nível de módulo (`let wi = false; wi || (wi = true, trackEvent(...))`) no
+  `CtaButton` — resolve o burst de disparo múltiplo do mesmo clique.
+  Sugerido (não confirmado se aplicado) resetar essa guarda num listener de
+  `pageshow` com `event.persisted` — sem isso, voltar do checkout da Kiwify
+  via botão "voltar" (restaurado do bfcache) não dispara um novo
+  `InitiateCheckout` numa segunda tentativa de compra na mesma aba.
+
+## Primeira venda real: status da Kiwify não reconhecido no painel (pós-deploy)
+
+- **Achado pelo usuário** ("houve uma compra mas não apareceu no funil nem
+  no card da visão geral"), 2026-09-06/07 — primeira venda de verdade via
+  Kiwify (`R$ 50,42`, matching por `trck_user_id` funcionou — confirma que
+  o link dinâmico de checkout da LP está funcionando de ponta a ponta). A
+  compra estava gravada certinha em `purchases`
+  (`status: "order_approved"`) e o Purchase **já tinha sido disparado pro
+  Meta com sucesso** (`purchase_event_id` setado) — o problema era só
+  visual, no painel.
+- **Causa raiz**: toda RPC de agregação que soma/conta vendas confirmadas
+  (`funnel_counts`, `billing_summary`, `page_funnel`, `revenue_by_day`,
+  `revenue_by_campaign`, `revenue_by_ad` — além da query de contagem de
+  `purchases` na Visão Geral, `app/(dashboard)/page.tsx`) tinha
+  `where status in ('approved', 'confirmed')` **hardcoded só com o
+  vocabulário da Guru**, escrito antes da Kiwify existir nesse sistema.
+  `purchases.status` guarda o que cada webhook manda cru (`webhook_event_type`/
+  `order_status` da Kiwify, `status` da Guru) — a decisão de "isso é uma
+  venda confirmada" pra disparar o Meta/GA4 já era por provedor
+  (`lib/guru/status-map.ts`/`lib/kiwify/status-map.ts`, e por isso o disparo
+  funcionou certo), mas o PAINEL nunca tinha sido atualizado pra reconhecer
+  o vocabulário novo.
+- **Fix**: migration `0019` reescreve as 6 funções (mesma assinatura, sem
+  precisar de `drop function` — diferente da `0012`, que mudava a lista de
+  parâmetros) pra aceitar
+  `('approved', 'confirmed', 'paid', 'order_approved', 'compra_aprovada')`
+  como "confirmada" (união do vocabulário dos dois provedores;
+  `'compra_aprovada'` é o nome do trigger da Kiwify, mantido por segurança
+  caso apareça em algum payload real). `refund_count` em `billing_summary`
+  ganhou `'compra_reembolsada'` pelo mesmo motivo. Mesma lista duplicada em
+  `app/(dashboard)/page.tsx` (contagem direta de `purchases`, não passa por
+  RPC).
+- **Confirmado com dados reais**: além da venda aprovada, o banco já tinha
+  `abandoned` (carrinho abandonado) e `pix_created` (Pix gerado, não pago)
+  — nenhum dos dois deve contar como receita, e não conta (não estão na
+  lista de status confirmados) — só a venda `order_approved` estava sendo
+  incorretamente ignorada.
+- **Lição pro próximo provedor de checkout**: se um terceiro processador
+  entrar no futuro, procurar por `'approved', 'confirmed', 'paid',
+  'order_approved', 'compra_aprovada'` no código (SQL das RPCs +
+  `app/(dashboard)/page.tsx`) e adicionar o vocabulário novo nos dois
+  lugares — não é automático.
 
 ## Estado atual
 
@@ -998,14 +1047,21 @@ paralelo (`app/api/webhook/kiwify/[token]/route.ts` + `lib/kiwify/*`, ver
 seção própria acima), mas **não validado com payload real** ainda, e o link
 de checkout na LP ainda é estático (sem `trck_user_id`/utms).
 
+Link de checkout da LP já virou dinâmico (`trckCheckoutUrl`) e foi validado
+com uma venda real via Kiwify (matching por `trck_user_id` funcionando,
+Purchase disparado pro Meta com sucesso) — pendência resolvida.
+
 **Ainda pendente**:
 - Gerar os tipos TypeScript do schema (ver seção Migrations) — só qualidade
   de vida de tipagem, não bloqueia nada (decisão do usuário: não fazer por
   enquanto).
-- Credenciais de Meta Pixel/GA4/webhook token já cadastradas; falta confirmar
-  o webhook Kiwify contra uma venda real e trocar o link de checkout da LP
-  pra dinâmico (ver seção "Webhook de compra Kiwify").
+- Migration `0019` (fix do status da Kiwify no painel) ainda precisa ser
+  colada no SQL editor do Supabase.
+- Confirmar se a LP aplicou o listener de `pageshow`/`bfcache` na guarda do
+  `InitiateCheckout` (ver seção "Duplicação de eventos").
 - Não confirmado se `movimentosemdor.tanisexavierdezordi.com.br` usa popup de
-  lead (recipe `trckCheckoutUrl`/`trackEvent("Lead")`) além do botão de
-  checkout — `InitiateCheckout` já foi corrigido (onClick no botão), `Lead`
-  ainda não confirmado.
+  lead (recipe `trckCheckoutUrl`/`trackEvent("Lead")`) — `InitiateCheckout`
+  já funciona, `Lead` ainda não confirmado.
+- Testar os triggers de reembolso/chargeback da Kiwify contra o painel
+  (agora que `billing_summary.refund_count` reconhece o vocabulário dela) —
+  só testado com venda aprovada até agora.

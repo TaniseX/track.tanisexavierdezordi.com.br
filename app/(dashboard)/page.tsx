@@ -45,7 +45,11 @@ export default async function OverviewPage() {
     supabase
       .from("purchases")
       .select("*", { count: "exact", head: true })
-      .in("status", ["approved", "confirmed"])
+      // Vocabulário de status "compra confirmada" de todos os provedores de
+      // checkout já integrados (Guru + Kiwify) — mesma lista usada nas RPCs
+      // de agregação (migration 0019), pra não ficar sem contar venda real
+      // só porque o provedor manda um status diferente. Ver CLAUDE.md.
+      .in("status", ["approved", "confirmed", "paid", "order_approved", "compra_aprovada"])
       .gte("created_at", range.from)
       .lte("created_at", range.to),
     supabase.rpc("billing_summary", { date_from: range.from, date_to: range.to }).single(),
