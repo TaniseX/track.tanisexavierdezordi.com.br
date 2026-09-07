@@ -2,6 +2,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { MobileNav } from "./mobile-nav";
 import { LogoutButton } from "./logout-button";
 import { DateRangeFilter } from "./date-range-filter";
+import { RefreshButton } from "./refresh-button";
 
 export function Topbar({ userEmail }: { userEmail?: string }) {
   return (
@@ -12,6 +13,7 @@ export function Topbar({ userEmail }: { userEmail?: string }) {
       </div>
       <div className="flex flex-1 items-center justify-end gap-2">
         <DateRangeFilter />
+        <RefreshButton />
         <ThemeToggle />
         <LogoutButton />
       </div>
