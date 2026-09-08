@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -46,8 +47,24 @@ export function DateRangeFilter() {
   const router = useRouter();
   const current = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [showCustom, setShowCustom] = useState(false);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; right: number } | null>(null);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // O popover agora é portalado pro document.body (ver comentário mais
+  // abaixo) — sem coordenada fixa calculada aqui, ele não teria como saber
+  // onde o botão "Personalizado" está na tela.
+  function toggleCustom() {
+    setShowCustom((prev) => {
+      const next = !prev;
+      if (next && triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect();
+        setPopoverPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+      }
+      return next;
+    });
+  }
 
   function apply(value: string) {
     writeCookie(value);
@@ -97,8 +114,9 @@ export function DateRangeFilter() {
       </div>
 
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setShowCustom((prev) => !prev)}
+        onClick={toggleCustom}
         className={cn(
           "shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
           isCustom
@@ -110,36 +128,52 @@ export function DateRangeFilter() {
         <span className="hidden sm:inline">{customLabel}</span>
       </button>
 
-      {showCustom && (
-        <div className="absolute right-0 top-full z-50 mt-2 flex flex-col gap-2 rounded-md border border-border bg-card p-3 shadow-xl">
-          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-            De
-            <input
-              type="date"
-              value={customFrom}
-              onChange={(e) => setCustomFrom(e.target.value)}
-              className="rounded-md border border-input bg-background px-2 py-1 text-sm"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-            Até
-            <input
-              type="date"
-              value={customTo}
-              onChange={(e) => setCustomTo(e.target.value)}
-              className="rounded-md border border-input bg-background px-2 py-1 text-sm"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={applyCustom}
-            disabled={!customFrom || !customTo}
-            className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+      {/* Portalado pro document.body (mesmo padrão de mobile-nav.tsx —
+          gotcha já documentado no CLAUDE.md): esse popover mora dentro do
+          grupo de botões da Topbar, que ganhou overflow-x-auto pra caber em
+          telas estreitas. overflow-x-auto força overflow-y a virar "auto"
+          também (regra do CSS: só dá pra "visible" nos dois eixos ou
+          nenhum) — um `absolute` normal ficava cortado/scrollado dentro da
+          faixa de 64px da Topbar em vez de flutuar por cima do conteúdo.
+          Portal + `fixed` com coordenada calculada no clique (getBoundingClientRect)
+          escapa desse container. */}
+      {showCustom &&
+        popoverPos &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed z-50 flex flex-col gap-2 rounded-md border border-border bg-card p-3 shadow-xl"
+            style={{ top: popoverPos.top, right: popoverPos.right }}
           >
-            Aplicar
-          </button>
-        </div>
-      )}
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+              De
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+              Até
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={applyCustom}
+              disabled={!customFrom || !customTo}
+              className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+            >
+              Aplicar
+            </button>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
