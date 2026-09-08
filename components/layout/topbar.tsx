@@ -11,11 +11,17 @@ export function Topbar({ userEmail }: { userEmail?: string }) {
       <div className="hidden truncate font-mono text-sm text-muted-foreground lg:block">
         {userEmail}
       </div>
-      <div className="flex flex-1 items-center justify-end gap-2">
+      {/* overflow-x-auto: em telas estreitas o filtro de data (5 botões) +
+          atualizar + tema + sair não cabem numa linha só — em vez de
+          quebrar/estourar a altura fixa da topbar, o grupo rola
+          horizontalmente. shrink-0 nos itens evita que eles se espremam. */}
+      <div className="flex flex-1 items-center justify-end gap-2 overflow-x-auto">
         <DateRangeFilter />
-        <RefreshButton />
-        <ThemeToggle />
-        <LogoutButton />
+        <div className="flex shrink-0 items-center gap-2">
+          <RefreshButton />
+          <ThemeToggle />
+          <LogoutButton />
+        </div>
       </div>
     </header>
   );

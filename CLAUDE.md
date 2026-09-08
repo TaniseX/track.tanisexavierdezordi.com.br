@@ -1021,6 +1021,66 @@ Migration `0011` já aplicada em produção (confirmada: `funnel_counts`/
   `app/(dashboard)/page.tsx`) e adicionar o vocabulário novo nos dois
   lugares — não é automático.
 
+## Compra "Direto" que veio do Meta Ads (pós-deploy)
+
+- **Achado pelo usuário** ("tivemos uma compra que marcou como 'direto', mas
+  foi pelo meta ads"), 2026-09-08 — investigando achei **dois problemas
+  diferentes**, um bug real e um caso de dado genuinamente ausente:
+  1. **Bug real, corrigido**: `dispatchPurchaseEvent` em
+     `lib/kiwify/process-purchase.ts` gravava `utm_source/campaign/content`
+     em `purchases` (usado pelo Faturamento) mas **esquecia** de gravar os
+     mesmos campos no INSERT de `events_log` (usado pela coluna Origem da
+     aba Eventos) — diferente do `processGuruPurchase`, que sempre gravou
+     os dois. Confirmado numa venda de 06/09 que tinha `utm_source: "ig"`
+     certinho em `purchases` mas `null` em `events_log` — ou seja, **toda**
+     compra da Kiwify com atribuição correta aparecia como "Direto" na aba
+     Eventos, mesmo estando certa no Faturamento. Corrigido: agora grava os
+     dois lugares.
+  2. **Não é bug — dado nunca chegou**: a compra específica do dia 08/09
+     citada pelo usuário tem `TrackingParameters` **inteiramente `null`** no
+     payload cru da Kiwify (nenhuma utm, nenhum `src`) **e**
+     `match_method: "unmatched"` (nem trck_user_id nem email/telefone
+     bateram com nenhum visitante já rastreado) — apesar de ter email e
+     telefone no payload, não existe visitante correspondente no banco. Ou
+     seja, esse comprador nunca passou pelo `tracker.js` (não visitou a LP
+     rastreada, ou visitou noutro dispositivo/sessão sem cookie). Pagamento
+     foi Pix — plausível que o clique no anúncio e o pagamento (via app do
+     banco) tenham acontecido em contextos diferentes o suficiente pra
+     quebrar a atribuição, **ou** o anúncio linkar direto pro checkout da
+     Kiwify sem passar pela LP. Corrigir o bug (1) não muda o que essa
+     compra específica mostra — o dado simplesmente não existe pra ela.
+     **Pendente de confirmar com o usuário**: se o(s) anúncio(s) linkam pra
+     `movimentosemdor.tanisexavierdezordi.com.br` (LP com `tracker.js`) ou
+     direto pro link de checkout da Kiwify — no segundo caso, nenhuma
+     compra vinda desse anúncio jamais teria atribuição, independente de
+     qualquer fix de código.
+
+## Responsividade mobile (pós-deploy)
+
+- **Topbar estourava em telas estreitas**: filtro de data (4 botões +
+  pill "Personalizado") + atualizar + tema + sair, todos numa linha só
+  dentro de `h-16 px-4` — em celular (~375px) isso não cabe. Fix: o grupo
+  da direita ganhou `overflow-x-auto` (rola horizontal em vez de quebrar a
+  altura fixa da topbar) e os botões de filtro de data mostram label curto
+  (`shortLabel`: "7d"/"30d"/"90d") abaixo de `sm:`, label completo
+  ("7 dias" etc) a partir daí — `lib/dashboard/date-range-shared.ts` +
+  `components/layout/date-range-filter.tsx`. `shrink-0` explícito nos
+  grupos de botão pra flexbox não espremer nada de forma estranha antes de
+  rolar.
+- **`MetricCard`** (cards da Visão Geral, 2 colunas já no menor breakpoint)
+  ganhou `min-w-0` no container de texto + `truncate` em label/valor/hint —
+  sem isso um valor grande (ex: "R$ 1.234,56") podia forçar a largura do
+  card e quebrar a grid de 2 colunas no celular.
+- **Resto do painel já seguia boas práticas responsivas** (auditado, não
+  precisou de mudança): tabelas (`Eventos`/`Faturamento`/`Páginas`/
+  `Campanhas`) já em `overflow-x-auto`; grids de card (`Geo`, cards da
+  Visão Geral) já com breakpoints mobile-first; `Sheet`
+  (drawer de visitante) e `Dialog` (detalhe de evento) já usam largura
+  responsiva (`w-full max-w-md` / `w-[calc(100%-2rem)] max-w-lg`);
+  `RevenueChart` (Recharts `ResponsiveContainer`) e `BrazilMap`
+  (`w-full`) já escalam com o container; `AccountList` já usa o mesmo
+  padrão `min-w-0`/`truncate`/`shrink-0` que o `MetricCard` ganhou agora.
+
 ## Estado atual
 
 Código herdado 1:1 do sistema construído pra `track.advflowpro.com` (fases

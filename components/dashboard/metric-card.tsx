@@ -14,10 +14,14 @@ export function MetricCard({
 }) {
   return (
     <Card className="flex items-start justify-between gap-2 p-4">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="mt-1 font-mono text-2xl font-bold tabular-nums">{value}</p>
-        {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+      {/* min-w-0: sem isso um item flex não encolhe abaixo do conteúdo
+          intrínseco — em grid-cols-2 no celular, um valor grande (ex:
+          "R$ 1.234,56") empurraria a largura do card e quebrava a grid.
+          truncate corta com "..." em vez de vazar pro card vizinho. */}
+      <div className="min-w-0">
+        <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="truncate font-mono text-2xl font-bold tabular-nums">{value}</p>
+        {hint && <p className="truncate mt-1 text-xs text-muted-foreground">{hint}</p>}
       </div>
       {Icon && (
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">

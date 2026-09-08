@@ -68,9 +68,9 @@ export function DateRangeFilter() {
   const customLabel = isCustom ? current.slice("custom:".length).replace(":", " a ") : "Personalizado";
 
   return (
-    <div className="relative flex items-center gap-2">
-      <div className="flex items-center gap-1 rounded-md border border-border bg-background p-1 text-xs">
-        <Calendar className="ml-1 h-3.5 w-3.5 text-muted-foreground" />
+    <div className="relative flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1 rounded-md border border-border bg-background p-1 text-xs">
+        <Calendar className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         {FIXED_DATE_RANGE_OPTIONS.map((opt) => (
           <button
             key={opt.key}
@@ -80,13 +80,18 @@ export function DateRangeFilter() {
               apply(opt.key);
             }}
             className={cn(
-              "rounded px-2 py-1 transition-colors",
+              "shrink-0 whitespace-nowrap rounded px-2 py-1 transition-colors",
               activeFixed === opt.key
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
-            {opt.label}
+            {/* Label curto sempre em telas pequenas (o filtro inteiro já
+                divide espaço com atualizar/tema/sair na topbar — "7 dias"
+                nos 4 botões + "Personalizado" não cabe numa tela de
+                celular). Full label a partir de sm:. */}
+            <span className="sm:hidden">{opt.shortLabel}</span>
+            <span className="hidden sm:inline">{opt.label}</span>
           </button>
         ))}
       </div>
@@ -95,13 +100,14 @@ export function DateRangeFilter() {
         type="button"
         onClick={() => setShowCustom((prev) => !prev)}
         className={cn(
-          "whitespace-nowrap rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+          "shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
           isCustom
             ? "border-primary bg-primary text-primary-foreground"
             : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
         )}
       >
-        {customLabel}
+        <span className="sm:hidden">{isCustom ? customLabel : "Custom"}</span>
+        <span className="hidden sm:inline">{customLabel}</span>
       </button>
 
       {showCustom && (
