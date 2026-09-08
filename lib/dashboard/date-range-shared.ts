@@ -3,7 +3,14 @@
 // não pode ser importado no client, então isso mora à parte.
 export const DATE_RANGE_COOKIE = "trck_range";
 
-export type DateRangeKey = "today" | "7d" | "30d" | "90d" | "custom";
+export type DateRangeKey =
+  | "today"
+  | "yesterday"
+  | "yesterday_today"
+  | "7d"
+  | "30d"
+  | "90d"
+  | "custom";
 
 // Só as opções fixas — "custom" tem UI própria (pill separado, não um botão
 // do segmentado), ver components/layout/date-range-filter.tsx. shortLabel é
@@ -15,6 +22,8 @@ export const FIXED_DATE_RANGE_OPTIONS: {
   shortLabel: string;
 }[] = [
   { key: "today", label: "Hoje", shortLabel: "Hoje" },
+  { key: "yesterday", label: "Ontem", shortLabel: "Ontem" },
+  { key: "yesterday_today", label: "Ontem e hoje", shortLabel: "Ont+hoje" },
   { key: "7d", label: "7 dias", shortLabel: "7d" },
   { key: "30d", label: "30 dias", shortLabel: "30d" },
   { key: "90d", label: "90 dias", shortLabel: "90d" },

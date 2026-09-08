@@ -38,6 +38,29 @@ export async function getDashboardDateRange(): Promise<DashboardDateRange> {
   const store = await cookies();
   const raw = store.get(DATE_RANGE_COOKIE)?.value;
   const today = spDateStr(new Date());
+  const yesterday = addDays(today, -1);
+
+  if (raw === "yesterday") {
+    return {
+      key: "yesterday",
+      label: "Ontem",
+      from: spStartOfDay(yesterday).toISOString(),
+      to: spEndOfDay(yesterday).toISOString(),
+      fromDate: yesterday,
+      toDate: yesterday,
+    };
+  }
+
+  if (raw === "yesterday_today") {
+    return {
+      key: "yesterday_today",
+      label: "Ontem e hoje",
+      from: spStartOfDay(yesterday).toISOString(),
+      to: spEndOfDay(today).toISOString(),
+      fromDate: yesterday,
+      toDate: today,
+    };
+  }
 
   if (raw?.startsWith("custom:")) {
     const [, from, to] = raw.split(":");
