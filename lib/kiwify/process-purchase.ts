@@ -174,6 +174,10 @@ export async function processKiwifyPurchase(
         productName,
         grossValue,
         currency,
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        utmContent,
         match,
       }).catch((err) => {
         console.error("Erro ao disparar Purchase (Kiwify) em segundo plano:", err);
@@ -201,6 +205,10 @@ async function dispatchPurchaseEvent(args: {
   productName: string | null;
   grossValue: number | null;
   currency: string;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  utmContent: string | null;
   match: VisitorMatch;
 }): Promise<void> {
   const {
@@ -216,6 +224,10 @@ async function dispatchPurchaseEvent(args: {
     productName,
     grossValue,
     currency,
+    utmSource,
+    utmMedium,
+    utmCampaign,
+    utmContent,
     match,
   } = args;
 
@@ -279,6 +291,11 @@ async function dispatchPurchaseEvent(args: {
       value,
       currency,
       ip,
+      utm_source: utmSource,
+      utm_medium: utmMedium,
+      utm_campaign: utmCampaign,
+      utm_term: trckUserId,
+      utm_content: utmContent,
       geo_country: country,
       geo_region: state,
       geo_city: city,
