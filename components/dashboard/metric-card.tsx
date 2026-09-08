@@ -26,7 +26,7 @@ export function MetricCard({
           raro mesmo em grid-cols-6. */}
       <div className="min-w-0">
         <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="break-words font-mono text-xl font-bold tabular-nums">{value}</p>
+        <p className="break-words font-mono text-lg font-bold tabular-nums">{value}</p>
         {hint && <p className="truncate mt-1 text-xs text-muted-foreground">{hint}</p>}
       </div>
       {Icon && (
