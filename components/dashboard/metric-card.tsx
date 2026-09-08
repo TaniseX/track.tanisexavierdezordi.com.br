@@ -13,27 +13,27 @@ export function MetricCard({
   icon?: LucideIcon;
 }) {
   return (
-    <Card className="flex items-start justify-between gap-2 p-4">
-      {/* min-w-0: sem isso um item flex não encolhe abaixo do conteúdo
-          intrínseco — em grid-cols-2 no celular (ou grid-cols-6 no desktop,
-          que é o mais apertado dos três breakpoints aqui) um valor grande
-          empurraria a largura do card e quebrava a grid. truncate no
-          label/hint corta com "..." (aceitável, é texto decorativo) — mas
-          NUNCA no valor: cortar o número em si (ex: "R$ 4..." em vez de
-          "R$ 47,90") esconde o dado que o card existe pra mostrar. Se não
-          couber numa linha, deixa quebrar (`break-words`) em vez de
-          truncar; `text-xl` (não `text-2xl`) dá mais folga pra isso ser
-          raro mesmo em grid-cols-6. */}
-      <div className="min-w-0">
-        <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="break-words font-mono text-lg font-bold tabular-nums">{value}</p>
-        {hint && <p className="truncate mt-1 text-xs text-muted-foreground">{hint}</p>}
+    <Card className="p-4">
+      {/* Ícone ao lado do RÓTULO (linha curta, sobra espaço), não do valor —
+          tentativa anterior deixava o ícone competir com o número pela
+          largura do card (o mais apertado dos breakpoints é grid-cols-6 no
+          desktop) e isso forçava o número a quebrar no meio (ex: "R$ 75,8"
+          / "4"), pior que truncar. Assim o valor fica sozinho numa linha
+          com a largura inteira do card — cabe em uma linha no caso normal;
+          truncate é só a rede de segurança pra um valor absurdamente
+          grande, não deve disparar na prática. */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="min-w-0 truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+        {Icon && (
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <Icon className="h-3.5 w-3.5" />
+          </div>
+        )}
       </div>
-      {Icon && (
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-          <Icon className="h-4 w-4" />
-        </div>
-      )}
+      <p className="mt-1 truncate font-mono text-lg font-bold tabular-nums">{value}</p>
+      {hint && <p className="truncate text-xs text-muted-foreground">{hint}</p>}
     </Card>
   );
 }
